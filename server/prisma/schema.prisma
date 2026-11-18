@@ -1,0 +1,210 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  Admin
+  Member
+  Tester
+  Viewer
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  TESTING
+  COMPLETED
+  FAILED
+}
+
+enum Priority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String
+  name           String
+  avatar         String?
+  role           Role            @default(Member)
+  teamMembers    TeamMember[]
+  assignedTasks  Task[]          @relation("AssignedTasks")
+  reportedTasks  Task[]          @relation("ReportedTasks")
+  testedTasks    Task[]          @relation("TestedTasks")
+  comments       Comment[]
+  activities     Activity[]
+  notifications  Notification[]  @relation("UserNotifications")
+  sentNotifications Notification[] @relation("SenderNotifications")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("users")
+}
+
+model Team {
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  description   String?
+  color         String          @default("#3ecf8e")
+  icon          String          @default("Layers")
+  members       TeamMember[]
+  projects      Project[]
+  tasks         Task[]
+  workflowRules WorkflowRule[]
+  notifications Notification[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      Role     @default(Member)
+  joinedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@map("team_members")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  teamId      String
+  name        String
+  key         String
+  description String?
+  color       String   @default("#3ecf8e")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@map("projects")
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  title       String
+  description String?
+  status      TaskStatus   @default(PENDING)
+  priority    Priority     @default(MEDIUM)
+  order       Int          @default(0)
+  dueDate     DateTime?
+  tags        String[]     @default([])
+  testerNotes String?
+
+  teamId      String
+  projectId   String
+  assigneeId  String?
+  reporterId  String
+  testerId    String?
+
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?        @relation("AssignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter    User         @relation("ReportedTasks", fields: [reporterId], references: [id], onDelete: Restrict)
+  tester      User?        @relation("TestedTasks", fields: [testerId], references: [id], onDelete: SetNull)
+
+  subtasks    Subtask[]
+  comments    Comment[]
+  activity    Activity[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([teamId])
+  @@index([projectId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model Subtask {
+  id        String   @id @default(cuid())
+  taskId    String
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("subtasks")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Activity {
+  id         String      @id @default(cuid())
+  taskId     String
+  userId     String
+  action     String
+  fromStatus TaskStatus?
+  toStatus   TaskStatus?
+  timestamp  DateTime    @default(now())
+
+  task       Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+model WorkflowRule {
+  id           String      @id @default(cuid())
+  teamId       String?
+  fromStatus   TaskStatus
+  toStatus     TaskStatus
+  allowed      Boolean     @default(true)
+  requiredRole Role?
+  description  String?
+
+  team         Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, fromStatus, toStatus])
+  @@map("workflow_rules")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  senderId  String
+  title     String
+  message   String
+  taskId    String?
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  sender    User     @relation("SenderNotifications", fields: [senderId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
