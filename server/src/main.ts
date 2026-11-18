@@ -11,7 +11,7 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: [clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: true,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type,Accept,Authorization',
@@ -20,7 +20,7 @@ async function bootstrap() {
   // Enable Global Validation Pipe
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
+      whitelist: false,
       transform: true,
       forbidNonWhitelisted: false,
     }),

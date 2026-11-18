@@ -33,6 +33,10 @@ export async function fetchGraphQL<T>(
     headers['Authorization'] = `Bearer ${authToken}`;
   }
 
+  const opMatch = query.match(/(mutation|query)\s+(\w+)/);
+  const opName = opMatch ? `${opMatch[1]} ${opMatch[2]}` : 'GraphQL API';
+  console.log(`🌐 [Network API Dispatch] -> POST ${GRAPHQL_ENDPOINT} (${opName})`, variables);
+
   const response = await fetch(GRAPHQL_ENDPOINT, {
     method: 'POST',
     headers,

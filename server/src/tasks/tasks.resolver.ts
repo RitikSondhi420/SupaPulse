@@ -42,7 +42,9 @@ export class TasksResolver {
     @Args('input') input: MoveTaskInput,
     @CurrentUser() user: any,
   ): Promise<Task> {
-    return this.tasksService.moveTask(input, user);
+    const res = await this.tasksService.moveTask(input, user);
+    console.log('DEBUG MOVE_TASK RESOLVER RESULT:', JSON.stringify(res));
+    return res;
   }
 
   @Mutation(() => Task, { description: 'Submit QA Tester Verdict (Pass -> Completed, Fail -> Failed with notes)' })

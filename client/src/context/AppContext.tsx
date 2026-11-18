@@ -627,16 +627,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return t;
     }));
 
-    // Synchronize to NestJS GraphQL Backend if connected
-    if (isBackendConnected) {
-      fetchGraphQL(MOVE_TASK_MUTATION, {
-        input: {
-          taskId,
-          targetStatus: targetStatus.toUpperCase(),
-          targetIndex: targetIndex || 0,
-        },
-      }).catch(err => console.warn('GraphQL move sync error:', err));
-    }
+    // Always dispatch GraphQL mutation API request to backend so it runs in network settings
+    fetchGraphQL(MOVE_TASK_MUTATION, {
+      input: {
+        taskId,
+        targetStatus: targetStatus.toUpperCase(),
+        targetIndex: targetIndex || 0,
+      },
+    })
+      .then(() => setIsBackendConnected(true))
+      .catch(err => console.warn('GraphQL move sync notice:', err));
 
     // Trigger Notification for relevant team members
     const newNotif: NotificationItem = {
@@ -693,21 +693,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setTasks(prev => [newTask, ...prev]);
 
-    // Synchronize to NestJS GraphQL Backend
-    if (isBackendConnected) {
-      fetchGraphQL(CREATE_TASK_MUTATION, {
-        input: {
-          title: newTask.title,
-          description: newTask.description,
-          teamId: newTask.teamId,
-          projectId: newTask.projectId,
-          status: newTask.status.toUpperCase(),
-          priority: newTask.priority.toUpperCase(),
-          assigneeId: newTask.assigneeId,
-          tags: newTask.tags,
-        },
-      }).catch(err => console.warn('GraphQL task creation sync error:', err));
-    }
+    // Always dispatch GraphQL mutation API request to backend
+    fetchGraphQL(CREATE_TASK_MUTATION, {
+      input: {
+        title: newTask.title,
+        description: newTask.description,
+        teamId: newTask.teamId,
+        projectId: newTask.projectId,
+        status: newTask.status.toUpperCase(),
+        priority: newTask.priority.toUpperCase(),
+        assigneeId: newTask.assigneeId,
+        tags: newTask.tags,
+      },
+    })
+      .then(() => setIsBackendConnected(true))
+      .catch(err => console.warn('GraphQL task creation sync notice:', err));
 
     // Send assignment notification if assigned to someone else
     if (newTask.assigneeId && newTask.assigneeId !== currentUser.id) {
@@ -868,16 +868,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setNotifications(prev => [notif, ...prev]);
 
-    // Synchronize QA verdict to NestJS GraphQL Backend
-    if (isBackendConnected) {
-      fetchGraphQL(SUBMIT_TESTER_VERDICT_MUTATION, {
-        input: {
-          taskId: task.id,
-          passed,
-          notes: notes || '',
-        },
-      }).catch(err => console.warn('GraphQL tester verdict sync error:', err));
-    }
+    // Always dispatch GraphQL mutation API request to backend
+    fetchGraphQL(SUBMIT_TESTER_VERDICT_MUTATION, {
+      input: {
+        taskId: task.id,
+        passed,
+        notes: notes || '',
+      },
+    })
+      .then(() => setIsBackendConnected(true))
+      .catch(err => console.warn('GraphQL tester verdict sync notice:', err));
 
     showToast(
       passed ? 'success' : 'error', 
@@ -895,16 +895,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return r;
     }));
 
-    // Synchronize to NestJS GraphQL Backend
-    if (isBackendConnected) {
-      fetchGraphQL(UPDATE_WORKFLOW_RULE_MUTATION, {
-        input: {
-          fromStatus: from.toUpperCase(),
-          toStatus: to.toUpperCase(),
-          allowed,
-        },
-      }).catch(err => console.warn('GraphQL workflow rule sync error:', err));
-    }
+    // Always dispatch GraphQL mutation API request to backend
+    fetchGraphQL(UPDATE_WORKFLOW_RULE_MUTATION, {
+      input: {
+        fromStatus: from.toUpperCase(),
+        toStatus: to.toUpperCase(),
+        allowed,
+      },
+    })
+      .then(() => setIsBackendConnected(true))
+      .catch(err => console.warn('GraphQL workflow rule sync notice:', err));
 
     showToast('info', 'Rule Updated', `Rule from ${from} -> ${to} is now ${allowed ? 'Allowed' : 'Disabled'}.`);
   };
