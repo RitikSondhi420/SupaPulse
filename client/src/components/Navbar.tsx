@@ -3,8 +3,8 @@ import { useApp } from '../context/AppContext';
 import { NotificationsPopover } from './NotificationsPopover';
 import { AuthModal } from './AuthModal';
 import { 
-  Plus, Bell, ChevronDown, ShieldCheck, 
-  Layers, Users, Sparkles, Check, KeyRound, RefreshCw 
+  Plus, Bell, ChevronDown, 
+  Check, KeyRound, LogOut, UserPlus 
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -19,12 +19,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewTaskModal }) => {
     switchTeam, 
     unreadNotificationsCount,
     isBackendConnected,
-    resetWorkspaceData 
+    logout,
+    isAuthModalOpen,
+    setIsAuthModalOpen
   } = useApp();
 
   const [isTeamMenuOpen, setIsTeamMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   return (
     <>
@@ -92,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewTaskModal }) => {
                       >
                         <div className="flex items-center gap-2 truncate">
                           <span 
-                            className="w-2 h-2 rounded-full shrink-0" 
+                            className="w-2.5 h-2.5 rounded-full shrink-0" 
                             style={{ backgroundColor: team.color }} 
                           />
                           <span className="truncate">{team.name}</span>
@@ -111,11 +112,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewTaskModal }) => {
           </div>
 
           {/* Backend GraphQL Status Badge */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-mono transition-colors">
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#262626] bg-[#121212] text-[10px] font-mono transition-colors">
             {isBackendConnected ? (
               <span className="flex items-center gap-1.5 text-[#3ecf8e]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#3ecf8e] animate-pulse" />
-                <span>GraphQL Live (:4000)</span>
+                <span>GraphQL Synced (:4000)</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-neutral-400">
@@ -126,8 +127,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewTaskModal }) => {
           </div>
         </div>
 
-        {/* Right Nav: New Task, Notifications, Switcher */}
-        <div className="flex items-center gap-3">
+        {/* Right Nav: New Task, Notifications, Switcher, Log Out */}
+        <div className="flex items-center gap-2.5">
           {/* New Task Button */}
           <button
             onClick={onOpenNewTaskModal}
@@ -160,9 +161,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewTaskModal }) => {
 
           {/* User Account / Role Switcher Pill */}
           <button
-            onClick={() => setIsAuthOpen(true)}
+            onClick={() => setIsAuthModalOpen(true)}
             className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl bg-[#1c1c1c] hover:bg-[#242424] border border-[#2a2a2a] hover:border-[#3ecf8e]/40 transition-all text-left"
-            title="Click to switch user or review Admin credentials"
+            title="Click to switch account, sign up, or sign in"
           >
             <img
               src={currentUser.avatar}
@@ -179,13 +180,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewTaskModal }) => {
             </div>
             <KeyRound className="w-3.5 h-3.5 text-neutral-400 hidden sm:block" />
           </button>
+
+          {/* Log Out Button */}
+          <button
+            onClick={logout}
+            className="p-2 rounded-xl bg-[#1c1c1c] hover:bg-rose-950/40 border border-[#2a2a2a] hover:border-rose-500/40 text-neutral-400 hover:text-rose-400 transition-colors"
+            title="Log Out (Sign out of SupaPulse)"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
       {/* Auth Modal */}
       <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
     </>
   );

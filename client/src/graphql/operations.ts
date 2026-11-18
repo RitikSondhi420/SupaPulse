@@ -14,6 +14,22 @@ export const LOGIN_MUTATION = `
   }
 `;
 
+export const SIGNUP_MUTATION = `
+  mutation Signup($input: SignupInput!) {
+    signup(input: $input) {
+      accessToken
+      user {
+        id
+        email
+        name
+        avatar
+        role
+        teamIds
+      }
+    }
+  }
+`;
+
 export const ME_QUERY = `
   query Me {
     me {

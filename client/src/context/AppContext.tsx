@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { 
-  User, Team, Project, Task, TaskStatus, 
+  User, UserRole, Team, Project, Task, TaskStatus, 
   WorkflowTransitionRule, NotificationItem, 
   ColumnDefinition, Subtask 
 } from '../types';
@@ -12,6 +12,7 @@ import {
 import { checkBackendHealth, fetchGraphQL, setStoredToken } from '../graphql/client';
 import { 
   LOGIN_MUTATION,
+  SIGNUP_MUTATION,
   USERS_QUERY,
   MY_TEAMS_QUERY,
   PROJECTS_QUERY,
@@ -39,6 +40,10 @@ interface AppContextType {
   users: User[];
   switchUser: (userId: string) => void;
   login: (email: string, pass: string) => Promise<boolean>;
+  signup: (name: string, email: string, pass: string, role?: UserRole) => Promise<boolean>;
+  logout: () => void;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
   syncFromBackend: () => Promise<void>;
   
   // Teams & Isolation
@@ -164,6 +169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeView, setActiveView] = useState<'board' | 'list' | 'rules' | 'members'>('board');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -302,6 +308,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     showToast('error', 'Login Failed', 'Invalid credentials.');
     return false;
+  };
+
+  // Signup handler with backend GraphQL and local fallback
+  const signup = async (name: string, email: string, pass: string, role: UserRole = 'Member'): Promise<boolean> => {
+    try {
+      if (isBackendConnected) {
+        const res = await fetchGraphQL<{ signup: { accessToken: string; user: User } }>(SIGNUP_MUTATION, {
+          input: { name, email, password: pass, role },
+        });
+        if (res?.signup) {
+          setStoredToken(res.signup.accessToken);
+          setCurrentUser(res.signup.user);
+          setUsers(prev => [...prev.filter(u => u.id !== res.signup.user.id), res.signup.user]);
+          await syncFromBackend();
+          showToast('success', 'Account Created', `Welcome to SupaPulse, ${res.signup.user.name}!`);
+          return true;
+        }
+      }
+    } catch (e: any) {
+      console.warn('Backend signup error:', e);
+      showToast('error', 'Sign Up Error', e.message || 'Could not register user');
+      return false;
+    }
+
+    // Fallback: create local user
+    const newUser: User = {
+      id: 'usr_' + Date.now(),
+      name,
+      email,
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      role,
+      teamIds: ['team_eng'],
+    };
+    setUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+    showToast('success', 'Account Created', `Welcome to SupaPulse, ${newUser.name}!`);
+    return true;
+  };
+
+  // Logout handler
+  const logout = () => {
+    setStoredToken(null);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user_id`);
+    const defaultUser = users[0] || INITIAL_USERS[0];
+    setCurrentUser(defaultUser);
+    setSelectedTask(null);
+    showToast('info', 'Logged Out', 'You have been signed out.');
+    setIsAuthModalOpen(true);
   };
 
   // Toasts
@@ -922,6 +976,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         users,
         switchUser,
         login,
+        signup,
+        logout,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
         syncFromBackend,
         teams,
         currentTeam,

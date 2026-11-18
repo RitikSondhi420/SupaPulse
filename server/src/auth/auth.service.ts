@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginInput } from './dto/login.input';
+import { SignupInput } from './dto/signup.input';
 import { AuthPayload } from './dto/auth-payload.type';
 import { User } from '../users/models/user.model';
 import * as bcrypt from 'bcryptjs';
@@ -107,6 +108,91 @@ export class AuthService {
 
   async login(loginInput: LoginInput): Promise<AuthPayload> {
     const user = await this.validateUser(loginInput.email, loginInput.password);
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      teamIds: user.teamIds,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+
+    return {
+      accessToken,
+      user,
+    };
+  }
+
+  async signup(signupInput: SignupInput): Promise<AuthPayload> {
+    const normalizedEmail = signupInput.email.toLowerCase().trim();
+
+    // Check if email already exists
+    if (this.prisma.isConnected) {
+      const existing = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (existing) {
+        throw new BadRequestException('A user with this email address already exists.');
+      }
+    } else {
+      const existingDemo = DEMO_USERS.find((u) => u.email.toLowerCase() === normalizedEmail);
+      if (existingDemo) {
+        throw new BadRequestException('A user with this email address already exists.');
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(signupInput.password, 10);
+    const defaultAvatar =
+      signupInput.avatar ||
+      `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`;
+    const userRole = signupInput.role || ('Member' as any);
+    const defaultTeamId = 'team_eng';
+
+    let user: User;
+
+    if (this.prisma.isConnected) {
+      const created = await this.prisma.user.create({
+        data: {
+          name: signupInput.name.trim(),
+          email: normalizedEmail,
+          password: hashedPassword,
+          role: userRole,
+          avatar: defaultAvatar,
+          teamMembers: {
+            create: {
+              teamId: defaultTeamId,
+              role: userRole,
+            },
+          },
+        },
+        include: { teamMembers: true },
+      });
+
+      user = {
+        id: created.id,
+        email: created.email,
+        name: created.name,
+        avatar: created.avatar,
+        role: created.role as any,
+        teamIds: created.teamMembers.map((tm) => tm.teamId),
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      };
+    } else {
+      user = {
+        id: 'usr_' + Date.now(),
+        email: normalizedEmail,
+        name: signupInput.name.trim(),
+        avatar: defaultAvatar,
+        role: userRole,
+        teamIds: [defaultTeamId],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      DEMO_USERS.push(user);
+    }
 
     const payload = {
       sub: user.id,
